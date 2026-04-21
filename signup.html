@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Dashverse</title>
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'none';
+        script-src 'self'
+            https://www.gstatic.com/firebasejs/
+            'unsafe-inline';
+        style-src 'unsafe-inline';
+        connect-src 'self'
+            https://dashverse-api-proxy.thondaladinne-masthan.workers.dev
+            https://identitytoolkit.googleapis.com
+            https://securetoken.googleapis.com
+            https://firestore.googleapis.com
+            https://www.googleapis.com;
+        img-src 'self' data:;
+        frame-ancestors 'none';
+        base-uri 'self';
+        form-action 'none';
+    ">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()">
+
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh; display: flex;
+            justify-content: center; align-items: center; padding: 20px;
+        }
+        .auth-container {
+            background: white; border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden; max-width: 1000px; width: 100%;
+            display: flex; min-height: 600px;
+        }
+        .left-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 60px 40px; color: white; flex: 1;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        .logo {
+            width: 150px; height: 150px; margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite; object-fit: contain;
+        }
+        @keyframes float { 0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)} }
+        .brand-title    { font-size: 2.5rem; font-weight: 700; margin-bottom: 15px; }
+        .brand-subtitle { font-size: 1.1rem; opacity: 0.9; }
+        .right-section {
+            flex: 1; padding: 50px;
+            display: flex; flex-direction: column;
+            overflow-y: auto; max-height: 100vh;
+        }
+        .form-header { margin-bottom: 25px; }
+        .form-header h2 { font-size: 2rem; color: #2c3e50; margin-bottom: 12px; }
+        .form-header p  { color: #6c757d; font-size: 1rem; line-height: 1.5; }
+        .user-type-selector { display: flex; gap: 15px; margin-bottom: 25px; }
+        .user-type-card {
+            flex: 1; padding: 20px; border: 2px solid #e9ecef;
+            border-radius: 12px; cursor: pointer; transition: all 0.3s;
+            text-align: center; background: white;
+        }
+        .user-type-card:hover { border-color: #667eea; transform: translateY(-2px); }
+        .user-type-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg,
+                rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+        }
+        .user-type-card .icon        { font-size: 2rem; margin-bottom: 10px; }
+        .user-type-card .title       { font-size: 1.1rem; font-weight: 600; color: #2c3e50; }
+        .user-type-card .description { font-size: 0.875rem; color: #6c757d; }
+        .form-group   { margin-bottom: 20px; }
+        .form-label   { display: block; margin-bottom: 8px; color: #495057; font-weight: 500; }
+        .required     { color: #dc3545; }
+        .form-input {
+            width: 100%; padding: 14px 16px;
+            border: 2px solid #e9ecef; border-radius: 8px;
+            font-size: 1rem; transition: all 0.3s; color: #2c3e50;
+        }
+        .form-input:focus {
+            outline: none; border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102,126,234,0.1);
+        }
+        .password-input-wrapper { position: relative; }
+        .password-input-wrapper .form-input { padding-right: 45px; }
+        .password-toggle {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; padding: 5px; color: #6c757d;
+        }
+        .password-toggle svg {
+            width: 20px; height: 20px; display: block;
+            fill: none; stroke: currentColor; stroke-width: 2;
+            stroke-linecap: round; stroke-linejoin: round;
+        }
+        .field-message { font-size: 0.875rem; margin-top: 5px; display: none; }
+        .field-message.show  { display: block; }
+        .field-message.error { color: #dc3545; }
+        .field-message.ok    { color: #28a745; }
+        .field-message.warn  { color: #856404; }
+        .pw-strength { margin-top: 8px; }
+        .pw-strength-bar {
+            height: 4px; border-radius: 2px;
+            background: #e9ecef; margin-bottom: 4px; overflow: hidden;
+        }
+        .pw-strength-fill {
+            height: 100%; border-radius: 2px;
+            transition: all 0.3s; width: 0%;
+        }
+        .pw-strength-fill.weak   { background: #dc3545; width: 25%; }
+        .pw-strength-fill.fair   { background: #ffc107; width: 50%; }
+        .pw-strength-fill.good   { background: #20c997; width: 75%; }
+        .pw-strength-fill.strong { background: #28a745; width: 100%; }
+        .pw-strength-label { font-size: 0.75rem; color: #6c757d; }
+        .btn-primary {
+            width: 100%; padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; border-radius: 8px;
+            font-size: 1.05rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102,126,234,0.4);
+        }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-links { margin-top: 20px; text-align: center; }
+        .form-links a { color: #667eea; text-decoration: none; font-weight: 500; }
+        .alert {
+            padding: 12px 16px; border-radius: 8px;
+            margin-bottom: 20px; display: none; word-break: break-word;
+        }
+        .alert.show  { display: block; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading-msg {
+            text-align: center; padding: 10px;
+            color: #667eea; font-size: 0.875rem; display: none;
+        }
+        .loading-msg.show { display: block; }
+        .already-exists-banner {
+            background: #fff3cd; border: 1px solid #ffc107;
+            border-radius: 10px; padding: 16px 18px;
+            margin-bottom: 20px; display: none;
+        }
+        .already-exists-banner.show { display: block; }
+        .already-exists-banner p { color: #856404; font-size: 0.95rem; margin-bottom: 10px; }
+        .banner-links { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .btn-signin {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; padding: 9px 22px; border-radius: 7px;
+            text-decoration: none; font-weight: 600; font-size: 0.9rem;
+        }
+        .btn-forgot {
+            display: inline-block; background: white; color: #667eea;
+            padding: 9px 22px; border-radius: 7px; text-decoration: none;
+            font-weight: 600; font-size: 0.9rem; border: 2px solid #667eea;
+        }
+        .writer-fields          { display: none; }
+        .writer-fields.visible  { display: block; }
+        @media (max-width: 768px) {
+            .auth-container     { flex-direction: column; }
+            .left-section       { padding: 40px 30px; }
+            .right-section      { padding: 40px 30px; }
+            .user-type-selector { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="left-section" aria-hidden="true">
+            <img src="dashtoon_logo.jpg" alt="" class="logo" id="logoImg">
+            <h1 class="brand-title">Dashverse</h1>
+            <p class="brand-subtitle">Join our creative community</p>
+        </div>
+        <div class="right-section">
+            <div class="form-header">
+                <h2>Create Account</h2>
+                <p>Choose your account type and get started</p>
+            </div>
+            <div class="user-type-selector" role="radiogroup" aria-label="Account type">
+                <div class="user-type-card active" data-type="dashverse"
+                     id="dashverseCard" role="radio" aria-checked="true" tabindex="0">
+                    <div class="icon" aria-hidden="true">🏢</div>
+                    <div class="title">Dashverse User</div>
+                    <div class="description">Internal team member</div>
+                </div>
+                <div class="user-type-card" data-type="writer"
+                     id="writerCard" role="radio" aria-checked="false" tabindex="0">
+                    <div class="icon" aria-hidden="true">✍️</div>
+                    <div class="title">Writer</div>
+                    <div class="description">Content creator</div>
+                </div>
+            </div>
+            <div class="loading-msg" id="loadingMsg"
+                 role="status" aria-live="polite"></div>
+            <div class="alert alert-error" id="errorAlert"
+                 role="alert" aria-live="assertive"></div>
+            <div class="already-exists-banner" id="alreadyExistsBanner" role="alert">
+                <p id="alreadyExistsMsg"></p>
+                <div class="banner-links">
+                    <a href="login.html"            class="btn-signin">Sign In</a>
+                    <a href="forgot-password.html"  class="btn-forgot">Forgot Password?</a>
+                </div>
+            </div>
+            <form id="signupForm" autocomplete="off" novalidate
+                  aria-label="Create account form">
+                <div class="form-group">
+                    <label class="form-label" for="name">
+                        Full Name <span class="required">*</span>
+                    </label>
+                    <input type="text" class="form-input" id="name"
+                           placeholder="Your Name" required maxlength="100"
+                           autocomplete="name" aria-required="true">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="email">
+                        Email Address <span class="required">*</span>
+                    </label>
+                    <input type="email" class="form-input" id="email"
+                           placeholder="your@email.com" required maxlength="254"
+                           autocomplete="email" aria-required="true">
+                    <div class="field-message" id="emailFeedback" aria-live="polite"></div>
+                </div>
+                <div class="writer-fields" id="writerFields" aria-hidden="true">
+                    <div class="form-group">
+                        <label class="form-label" for="phone">
+                            Phone Number <span class="required">*</span>
+                        </label>
+                        <input type="tel" class="form-input" id="phone"
+                               placeholder="+91 98765 43210" maxlength="20"
+                               autocomplete="tel">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="company">
+                            Company <span class="required">*</span>
+                        </label>
+                        <input type="text" class="form-input" id="company"
+                               placeholder="Your Company" maxlength="200"
+                               autocomplete="organization">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        Password <span class="required">*</span>
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" class="form-input" id="password"
+                               placeholder="Min 8 chars, uppercase, lowercase, number"
+                               required maxlength="128" autocomplete="new-password">
+                        <button type="button" class="password-toggle"
+                                id="togglePassword" aria-label="Show password">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5
+                                         c4.478 0 8.268 2.943 9.542 7
+                                         -1.274 4.057-5.064 7-9.542 7
+                                         -4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="pw-strength" id="pwStrength" style="display:none;">
+                        <div class="pw-strength-bar">
+                            <div class="pw-strength-fill" id="pwStrengthFill"></div>
+                        </div>
+                        <div class="pw-strength-label" id="pwStrengthLabel"></div>
+                    </div>
+                    <div class="field-message" id="passwordFeedback" aria-live="polite"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirmPassword">
+                        Confirm Password <span class="required">*</span>
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" class="form-input" id="confirmPassword"
+                               placeholder="Re-enter password" required maxlength="128"
+                               autocomplete="new-password">
+                        <button type="button" class="password-toggle"
+                                id="toggleConfirmPassword" aria-label="Show password">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path d="M2.458 12C3.732 7.943 7.523 5 12 5
+                                         c4.478 0 8.268 2.943 9.542 7
+                                         -1.274 4.057-5.064 7-9.542 7
+                                         -4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="field-message" id="confirmPwFeedback" aria-live="polite"></div>
+                </div>
+                <button type="submit" class="btn-primary"
+                        id="signupBtn" disabled>Create Account</button>
+            </form>
+            <div class="form-links">
+                Already have an account? <a href="login.html">Sign In</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            'use strict';
+            var logoImg = document.getElementById('logoImg');
+            if (logoImg) {
+                logoImg.onerror = function () { logoImg.style.display = 'none'; };
+            }
+            function setupToggle(btnId, inputId) {
+                var btn   = document.getElementById(btnId);
+                var input = document.getElementById(inputId);
+                if (!btn || !input) return;
+                btn.addEventListener('click', function () {
+                    var isPass = input.type === 'password';
+                    input.type = isPass ? 'text' : 'password';
+                    this.setAttribute('aria-label',
+                        isPass ? 'Hide password' : 'Show password');
+                    input.focus();
+                });
+            }
+            setupToggle('togglePassword',        'password');
+            setupToggle('toggleConfirmPassword', 'confirmPassword');
+        })();
+    </script>
+
+    <script type="module">
+        import {
+            auth, db, ensureInitialized,
+            createUserWithEmailAndPassword, sendEmailVerification, signOut,
+            doc, setDoc, serverTimestamp,
+            SecureSession, RateLimiter, SecureLogger,
+            isValidEmail, sanitizeInput, sanitizeForStorage,
+            isStrongPassword, getPasswordStrengthMessage, SECURITY,
+        } from './firebase.js';
+
+        let selectedType  = 'dashverse';
+        let firebaseReady = false;
+        const signupLimiter = new RateLimiter('signup');
+
+        const signupForm        = document.getElementById('signupForm');
+        const signupBtn         = document.getElementById('signupBtn');
+        const loadingMsg        = document.getElementById('loadingMsg');
+        const errorAlert        = document.getElementById('errorAlert');
+        const alreadyBanner     = document.getElementById('alreadyExistsBanner');
+        const alreadyMsg        = document.getElementById('alreadyExistsMsg');
+        const emailInput        = document.getElementById('email');
+        const emailFeedback     = document.getElementById('emailFeedback');
+        const passwordInput     = document.getElementById('password');
+        const passwordFeedback  = document.getElementById('passwordFeedback');
+        const confirmPwFeedback = document.getElementById('confirmPwFeedback');
+        const writerFields      = document.getElementById('writerFields');
+        const dashverseCard     = document.getElementById('dashverseCard');
+        const writerCard        = document.getElementById('writerCard');
+        const pwStrength        = document.getElementById('pwStrength');
+        const pwStrengthFill    = document.getElementById('pwStrengthFill');
+        const pwStrengthLabel   = document.getElementById('pwStrengthLabel');
+
+        function isValidPhone(phone) {
+            const digits = phone.replace(/\D/g, '');
+            return /^[+\d\s\-()]{7,20}$/.test(phone) && digits.length >= 7;
+        }
+
+        function showError(message) {
+            hideAllAlerts();
+            errorAlert.textContent = message;
+            errorAlert.classList.add('show');
+            setTimeout(() => errorAlert.classList.remove('show'), 8000);
+        }
+        function showAlreadyExists() {
+            hideAllAlerts();
+            alreadyMsg.textContent = '⚠️ An account with this email already exists. Please sign in or reset your password.';
+            alreadyBanner.classList.add('show');
+            emailInput.setAttribute('aria-invalid', 'true');
+        }
+        function hideAllAlerts() {
+            errorAlert.classList.remove('show');
+            alreadyBanner.classList.remove('show');
+            emailInput.removeAttribute('aria-invalid');
+        }
+        function setFeedback(el, type, message) {
+            el.textContent = message;
+            el.className   = `field-message${type ? ` show ${type}` : ''}`;
+        }
+
+        function updatePasswordStrength(pw) {
+            if (!pw) {
+                pwStrength.style.display = 'none';
+                setFeedback(passwordFeedback, '', '');
+                return;
+            }
+            pwStrength.style.display = 'block';
+
+            let score = 0;
+            if (pw.length >= 8)              score++;
+            if (pw.length >= 12)             score++;
+            if (/[A-Z]/.test(pw))            score++;
+            if (/[a-z]/.test(pw))            score++;
+            if (/[0-9]/.test(pw))            score++;
+            if (/[^A-Za-z0-9]/.test(pw))     score++;
+
+            const levels = ['weak','fair','fair','good','good','strong','strong'];
+            const labels = ['Very Weak','Weak','Fair','Good','Good','Strong','Very Strong'];
+            const level  = levels[Math.min(score, 6)];
+            const label  = labels[Math.min(score, 6)];
+
+            pwStrengthFill.className     = `pw-strength-fill ${level}`;
+            pwStrengthLabel.textContent  = `Strength: ${label}`;
+
+            const msg = getPasswordStrengthMessage(pw);
+            if (msg) setFeedback(passwordFeedback, 'warn', `⚠️ ${msg}`);
+            else     setFeedback(passwordFeedback, 'ok',   '✅ Password meets requirements');
+        }
+
+        passwordInput.addEventListener('input', function () {
+            updatePasswordStrength(this.value);
+            const cpw = document.getElementById('confirmPassword').value;
+            if (cpw) validateConfirmPw();
+        });
+
+        function validateConfirmPw() {
+            const pw  = passwordInput.value;
+            const cpw = document.getElementById('confirmPassword').value;
+            if (!cpw) { setFeedback(confirmPwFeedback, '', ''); return; }
+            if (pw === cpw) setFeedback(confirmPwFeedback, 'ok',    '✅ Passwords match');
+            else            setFeedback(confirmPwFeedback, 'error', '❌ Passwords do not match');
+        }
+        document.getElementById('confirmPassword').addEventListener('input', validateConfirmPw);
+
+        async function waitForFirebase() {
+            loadingMsg.textContent = '⏳ Connecting to server...';
+            loadingMsg.classList.add('show');
+            signupBtn.disabled = true;
+            try {
+                await ensureInitialized();
+                firebaseReady = true;
+                loadingMsg.classList.remove('show');
+                signupBtn.disabled = false;
+            } catch (err) {
+                loadingMsg.textContent = '❌ Failed to connect. Please refresh.';
+                loadingMsg.style.color = '#dc3545';
+                loadingMsg.classList.add('show');
+            }
+        }
+        waitForFirebase();
+
+        function selectType(type) {
+            selectedType = type;
+            const isDashverse = type === 'dashverse';
+            dashverseCard.classList.toggle('active', isDashverse);
+            dashverseCard.setAttribute('aria-checked', String(isDashverse));
+            writerCard.classList.toggle('active',    !isDashverse);
+            writerCard.setAttribute('aria-checked',  String(!isDashverse));
+            writerFields.classList.toggle('visible', !isDashverse);
+            writerFields.setAttribute('aria-hidden', String(isDashverse));
+            ['phone', 'company'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.required = !isDashverse;
+                    el.setAttribute('aria-required', String(!isDashverse));
+                }
+            });
+            validateEmailDomain();
+            hideAllAlerts();
+        }
+
+        dashverseCard.addEventListener('click', () => selectType('dashverse'));
+        writerCard.addEventListener('click',    () => selectType('writer'));
+        [dashverseCard, writerCard].forEach(card => {
+            card.addEventListener('keydown', e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectType(card.dataset.type);
+                }
+            });
+        });
+
+        function validateEmailDomain() {
+            const email = emailInput.value.trim().toLowerCase();
+            if (!email.includes('@')) { setFeedback(emailFeedback, '', ''); return; }
+            if (selectedType === 'dashverse') {
+                if (email.endsWith('@dashverse.ai'))
+                    setFeedback(emailFeedback, 'ok',    '✅ Valid Dashverse email');
+                else
+                    setFeedback(emailFeedback, 'error', '⚠️ Only @dashverse.ai emails allowed');
+            } else {
+                if (email.endsWith('@dashverse.ai'))
+                    setFeedback(emailFeedback, 'error', '⚠️ Writers cannot use @dashverse.ai emails');
+                else if (isValidEmail(email))
+                    setFeedback(emailFeedback, 'ok', '✅ Valid email');
+                else
+                    setFeedback(emailFeedback, '', '');
+            }
+        }
+
+        emailInput.addEventListener('input', () => { validateEmailDomain(); hideAllAlerts(); });
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideAllAlerts();
+
+            if (!firebaseReady) {
+                showError('Still connecting. Please wait and try again.');
+                return;
+            }
+            if (!signupLimiter.canProceed()) {
+                showError('Too many signup attempts. Please wait 15 minutes.');
+                return;
+            }
+
+            const name            = sanitizeInput(document.getElementById('name').value, 100);
+            const email           = sanitizeInput(emailInput.value, 254).toLowerCase();
+            const phone           = sanitizeInput(document.getElementById('phone').value, 20);
+            const company         = sanitizeInput(document.getElementById('company').value, 200);
+            const password        = passwordInput.value.substring(0, 128);
+            const confirmPassword = document.getElementById('confirmPassword').value.substring(0, 128);
+
+            if (!name || name.length < 2) {
+                showError('Please enter your full name (at least 2 characters).'); return;
+            }
+            if (!isValidEmail(email)) {
+                showError('Please enter a valid email address.'); return;
+            }
+            if (selectedType === 'dashverse' && !email.endsWith('@dashverse.ai')) {
+                showError('Dashverse users must use an @dashverse.ai email address.'); return;
+            }
+            if (selectedType === 'writer' && email.endsWith('@dashverse.ai')) {
+                showError('Writers cannot register with a @dashverse.ai email address.'); return;
+            }
+            if (selectedType === 'writer') {
+                if (!phone || !isValidPhone(phone)) {
+                    showError('Please enter a valid phone number (at least 7 digits).'); return;
+                }
+                if (!company || company.length < 2) {
+                    showError('Please enter your company name (at least 2 characters).'); return;
+                }
+            }
+
+            if (!password || password.length < SECURITY.PASSWORD_MIN_LENGTH) {
+                showError(`Password must be at least ${SECURITY.PASSWORD_MIN_LENGTH} characters.`); return;
+            }
+            if (!isStrongPassword(password)) {
+                const msg = getPasswordStrengthMessage(password);
+                showError(msg || 'Password does not meet complexity requirements.'); return;
+            }
+            if (password !== confirmPassword) {
+                showError('Passwords do not match. Please check and try again.'); return;
+            }
+
+            signupBtn.disabled    = true;
+            signupBtn.textContent = 'Creating account…';
+
+            try {
+                const credential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = credential.user;
+
+                const col     = selectedType === 'dashverse' ? 'admins' : 'writers';
+                const profile = {
+                    uid:           user.uid,
+                    name:          sanitizeForStorage(name),
+                    email:         email,
+                    role:          selectedType === 'dashverse' ? 'admin' : 'writer',
+                    emailVerified: false,
+                    createdAt:     serverTimestamp(),
+                };
+                if (selectedType === 'writer') {
+                    profile.phone   = sanitizeForStorage(phone);
+                    profile.company = sanitizeForStorage(company);
+                }
+
+                await setDoc(doc(db, col, user.uid), profile);
+                await sendEmailVerification(user);
+
+                SecureSession.setPendingVerification({ email, name });
+                window.location.replace('verify-email.html');
+
+            } catch (error) {
+                SecureLogger.error('Signup error:', error.code);
+
+                if (error.code === 'auth/email-already-in-use') {
+                    showAlreadyExists();
+                } else {
+                    let message = 'An error occurred. Please try again.';
+                    switch (error.code) {
+                        case 'auth/invalid-email':
+                            message = 'The email address format is invalid.'; break;
+                        case 'auth/weak-password':
+                            message = 'Password is too weak. Please choose a stronger password.'; break;
+                        case 'auth/network-request-failed':
+                            message = 'Network error. Check your internet connection.'; break;
+                        case 'auth/operation-not-allowed':
+                            message = 'Account creation is currently disabled.'; break;
+                        default:
+                            message = 'Failed to create account. Please try again.';
+                    }
+                    showError(message);
+                }
+
+                signupBtn.disabled    = false;
+                signupBtn.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+</html>
