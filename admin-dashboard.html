@@ -512,6 +512,20 @@
         .btn-confirm-save { padding:0.75rem 1.5rem; background:linear-gradient(135deg,#667eea 0%,#764ba2 100%); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600; transition:all 0.2s; }
         .btn-confirm-save:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(102,126,234,0.4); }
         .btn-confirm-save:disabled { opacity:0.6; cursor:not-allowed; transform:none !important; }
+        .logout-confirm-content { max-width:460px; }
+        .logout-confirm-header { background:linear-gradient(135deg,rgba(240,147,251,0.12) 0%,rgba(245,87,108,0.12) 100%); border-bottom:1px solid rgba(245,87,108,0.2); }
+        .logout-confirm-icon { background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%); color:white; }
+        .logout-confirm-body { padding:1.75rem 2rem; color:#495057; }
+        .logout-confirm-body p { margin:0; line-height:1.6; }
+        .logout-confirm-note { margin-top:0.875rem; font-size:0.8125rem; color:#6c757d; }
+        .logout-confirm-footer { flex-wrap:wrap; }
+        .btn-logout-confirm {
+            padding:0.75rem 1.5rem; background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);
+            color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;
+            transition:all 0.2s; display:inline-flex; align-items:center; justify-content:center;
+        }
+        .btn-logout-confirm:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(245,87,108,0.35); }
+        .btn-logout-confirm:disabled { opacity:0.6; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
         .add-mode .edit-only-section { display:none !important; }
 
         .writers-modal-content { background:white; border-radius:16px; width:95%; max-width:1000px; box-shadow:0 20px 60px rgba(0,0,0,0.3); display:flex; flex-direction:column; max-height:90vh; overflow:hidden; }
@@ -739,6 +753,10 @@
             .history-entry-by{margin-left:0;}
             .lp-dropdown-add-row{flex-wrap:wrap;}
             .chat-bubble{max-width:85%;}
+            .logout-confirm-content{width:95%;}
+            .logout-confirm-footer{flex-direction:column-reverse;}
+            .logout-confirm-footer .btn-confirm-cancel,
+            .logout-confirm-footer .btn-logout-confirm{width:100%;}
         }
     </style>
 </head>
@@ -1264,6 +1282,27 @@
         <div class="confirm-footer">
             <button type="button" class="btn-confirm-cancel" onclick="closeConfirmModal()">← Go Back</button>
             <button type="button" class="btn-confirm-save" id="confirmSaveBtn">✓ Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Logout Modal -->
+<div class="confirm-modal" id="logoutModal">
+    <div class="confirm-content logout-confirm-content" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+        <div class="confirm-header logout-confirm-header">
+            <div class="confirm-header-icon logout-confirm-icon">🚪</div>
+            <div class="confirm-header-text">
+                <h3 id="logoutModalTitle">Logout Confirmation</h3>
+                <p>Are you sure you want to logout?</p>
+            </div>
+        </div>
+        <div class="logout-confirm-body">
+            <p>You will be signed out of your current dashboard session.</p>
+            <div class="logout-confirm-note">Choose <strong>No</strong> to stay here or <strong>Yes</strong> to logout now.</div>
+        </div>
+        <div class="confirm-footer logout-confirm-footer">
+            <button type="button" class="btn-confirm-cancel" id="logoutCancelBtn" onclick="closeLogoutModal()">No</button>
+            <button type="button" class="btn-logout-confirm" id="logoutConfirmBtn" onclick="confirmLogout()">Yes, Logout</button>
         </div>
     </div>
 </div>
@@ -2970,6 +3009,7 @@ document.addEventListener('keydown', e => {
         if(document.activeElement.tagName!=='TEXTAREA'&&document.activeElement.tagName!=='SELECT'){e.preventDefault();window.previewQuickEdit();}return;
     }
     if(e.key==='Escape'){
+        if(document.getElementById('logoutModal').classList.contains('show')){window.closeLogoutModal();return;}
         if(document.getElementById('multiLinkModal').classList.contains('show')){closeMultiLinkModal();return;}
         if(document.getElementById('writerHistoryModal').classList.contains('show')){closeWriterHistoryModal();return;}
         if(document.getElementById('totalShowsModal').classList.contains('show')){window.closeTotalShowsModal();return;}
@@ -3001,16 +3041,48 @@ document.addEventListener('click', function(e) {
 document.getElementById('quickEditModal').addEventListener('click', function(e){if(e.target===this)window.closeQuickEditModal();});
 document.getElementById('showModal').addEventListener('click',   function(e){if(e.target===this)window.closeModal();});
 document.getElementById('confirmModal').addEventListener('click', function(e){if(e.target===this)window.closeConfirmModal();});
+document.getElementById('logoutModal').addEventListener('click', function(e){if(e.target===this)window.closeLogoutModal();});
 
 // ─── Logout ────────────────────────────────────────────────────────────────
-window.logout = function() {
-    if (!confirm('Logout?')) return;
+function resetLogoutModalState() {
+    const btn = document.getElementById('logoutConfirmBtn');
+    if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Yes, Logout';
+    }
+}
+window.openLogoutModal = function() {
+    if (isLoggingOut) return;
+    resetLogoutModalState();
+    document.getElementById('logoutModal').classList.add('show');
+    setTimeout(() => document.getElementById('logoutCancelBtn')?.focus(), 50);
+};
+window.closeLogoutModal = function() {
+    if (isLoggingOut) return;
+    document.getElementById('logoutModal').classList.remove('show');
+    resetLogoutModalState();
+};
+window.confirmLogout = function() {
+    if (isLoggingOut) return;
+    const btn = document.getElementById('logoutConfirmBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Logging out...';
+    }
+    document.getElementById('logoutModal').classList.remove('show');
     isLoggingOut = true;
     if(unsubscribeSnapshot) try{unsubscribeSnapshot();}catch(e){}
     if(unsubscribeWriters)  try{unsubscribeWriters();}catch(e){}
     SecureSession.clear(); sessionStorage.clear();
     try{const bc=new BroadcastChannel('dashverse_auth');bc.postMessage({type:'logout'});bc.close();}catch(e){}
-    auth.signOut().then(()=>window.location.replace('login.html')).catch(()=>{isLoggingOut=false;showToast('Logout failed','error');});
+    auth.signOut().then(()=>window.location.replace('login.html')).catch(()=>{
+        isLoggingOut=false;
+        resetLogoutModalState();
+        showToast('Logout failed','error');
+    });
+};
+window.logout = function() {
+    window.openLogoutModal();
 };
 try {
     const bc = new BroadcastChannel('dashverse_auth');

@@ -411,7 +411,6 @@
 
                 // ── 4. Create secure session (FIXED: now awaited properly) ──
                 // createSession is async and generates the new kv:2 HMAC key
-                showInfo('🔐 Securing session…');
                 let sessionToken;
                 try {
                     sessionToken = await SecureSession.createSession(user.uid);
